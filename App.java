@@ -15,12 +15,12 @@ public class App extends Frame implements WindowListener, ActionListener {
     static JTextArea textArea;
     static JButton sendButton;
     static JButton callButton;
-    private DatagramSocket socket; // DatagramSocket για αποστολή και λήψη μηνυμάτων.
-    private InetAddress remoteAddress; // Η κλάση InetAddress αντιπροσωπεύει την IP διέυθυνση στην οποία θα στείλουμε δεδομένα.
-    private int remotePort = 10; // Το port του απομακρυσμένου χρήστη, στο οποίο στέλνουμε κείμενο και ήχο.
-    private int localPort = 10;  // Το δικό μας port, στο οποίο λαμβάνουμε κείμενο και ήχο.
-    private String remoteIp = "192.168.100.11"; // Η διεύθυνση IP του απομακρυσμένου χρήστη.
-    private Thread receiverThread; // Νήμα για τη λήψη μηνυμάτων.
+    private DatagramSocket socket; // DatagramSocket for sending and receiving messages.
+    private InetAddress remoteAddress; // InetAddress represents the IP address to which we will send data.
+    private int remotePort = 20; // The port of the remote user to which we send text and audio.
+    private int localPort = 10;  // Our own port, where we receive text and audio.
+    private String remoteIp = "160.40.66.152"; // The IP address of the remote user.
+    private Thread receiverThread; // Thread for receiving messages.
 
     private TargetDataLine microphoneLine;
     private SourceDataLine speakerLine;
@@ -47,68 +47,68 @@ public class App extends Frame implements WindowListener, ActionListener {
         sendButton.addActionListener(this);
         callButton.addActionListener(this);
 
-        // Ορισμός της απομακρυσμένης διεύθυνσης IP.
+        // Set the remote IP address.
         remoteAddress = InetAddress.getByName(remoteIp);
 
         try {
-    		// Δημιουργία DatagramSocket για αποστολή και λήψη μηνυμάτων.
-    		// Η λήψη μηνυμάτων γίνεται στο localPort.
+            // Create DatagramSocket for sending and receiving messages.
+            // Message reception happens on the localPort.
             socket = new DatagramSocket(localPort);
-            // Νήμα για την λήψη μηνυμάτων (κειμένου + ήχου).
+            // Thread for receiving messages (text + audio).
             receiverThread = new Thread(() -> {
                 try {
                     while (true) {
-                        byte[] buffer = new byte[1024]; // Ο buffer θα αποθηκεύσει τα δεδομένα που θα λάβουμε.
-                        								// Μπορούμε να λάβουμε το μέγιστο 1024 bytes.
-                        // Για να λάβεις δεδομένα πρέπει να δημιουργήσεις ένα DatagramPacket.
+                        byte[] buffer = new byte[1024]; // Buffer will store the received data.
+                                                       // Max size of received data: 1024 bytes.
+                        // To receive data you need to create a DatagramPacket.
                         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                        socket.receive(packet); // Για να λάβεις δεδομένα καλείς τη μέθοδο receive().
+                        socket.receive(packet); // Use the receive() method to get data.
 
-                        // Ελέγχουμε αν το μήκος του buffer είναι μικρό, οπότε ίσως πρόκειται για κείμενο.
+                        // If the packet length is small, it may be text.
                         if (packet.getLength() < 1024) {
                             String receivedMessage = new String(packet.getData(), 0, packet.getLength());
-                            textArea.append("Remote: " + receivedMessage + "\n"); // Τυπώνει το κείμενο στην οθόνη του GUI.
+                            textArea.append("Remote: " + receivedMessage + "\n"); // Display text in the GUI.
                         } else {
-                            // Αν το μήκος είναι μεγάλο, τότε πρόκειται για δεδομένα ήχου.
-                            speakerLine.write(packet.getData(), 0, packet.getLength());  // Αναπαραγωγή ήχου στο ηχείο.
+                            // If the length is large, it is likely audio data.
+                            speakerLine.write(packet.getData(), 0, packet.getLength()); // Play audio to speaker.
                         }
                     }
                 } catch (IOException ex) {
                     textArea.append("Error in receiving message: " + ex.getMessage() + "\n");
                 }
             });
-            receiverThread.start(); // Εκκίνηση του νήματος λήψης μηνυμάτων.
+            receiverThread.start(); // Start the receiver thread.
         } catch (SocketException ex) {
             textArea.append("Error initializing socket: " + ex.getMessage() + "\n");
         }
 
-        // Ρύθμιση παραμέτρων για την λειτουργία VoIP, σύμφωνα με τις προδιαγραφές της εργασίας.
-        // Η AudioFormat καθορίζει τις παραμέτρους του ήχου που θα χρησιμοποιηθούν:
+        // Configure VoIP settings according to project specifications.
+        // AudioFormat defines the audio parameters to be used:
         audioFormat = new AudioFormat(8000, 8, 1, true, false);
-        /* 8000: Η δειγματοληψία (sampling rate), δηλαδή 8 kHz (8.000 δείγματα ανά δευτερόλεπτο).
-         * 8: Το μέγεθος κάθε δείγματος σε bits (8 bits, δηλαδή 1 byte).
-         * 1: Μονοφωνικός ήχος (ένα κανάλι).
-         * true: Υποδεικνύει ότι τα δεδομένα ήχου είναι signed (υπογεγραμμένα).
-         * false: Υποδεικνύει ότι τα δεδομένα ήχου είναι σε little-endian μορφή (χαμηλότερο byte πρώτα).
+        /* 8000: Sampling rate, i.e., 8 kHz (8,000 samples per second).
+         * 8: Sample size in bits (8 bits = 1 byte).
+         * 1: Mono audio (1 channel).
+         * true: Audio data is signed.
+         * false: Audio data is in little-endian format (least significant byte first).
          */
-        
-        // Ρύθμιση του μικροφώνου:
+
+        // Microphone configuration:
         DataLine.Info info = new DataLine.Info(TargetDataLine.class, audioFormat);
-        // Το αντικείμενο DataLine.Info περιγράφει την επιθυμητή γραμμή δεδομένων (data line).
-        // Ορίζεται ότι η γραμμή είναι τύπου TargetDataLine (γραμμή εισόδου ήχου: μικρόφωνο).
-        // Το info συνδέεται με το αντικείμενο audioFormat ώστε να αντιστοιχεί στις παραμέτρους που ορίσαμε.
+        // DataLine.Info describes the desired data line type.
+        // Specifies TargetDataLine (audio input line: microphone).
+        // The info is associated with the audioFormat object to match the defined parameters.
         try {
             microphoneLine = (TargetDataLine) AudioSystem.getLine(info);
             microphoneLine.open(audioFormat);
-            microphoneLine.start(); // Ξεκινά την εγγραφή ήχου από το μικρόφωνο.
-            
-            // Ρύθμιση των ηχείων:
-            info = new DataLine.Info(SourceDataLine.class, audioFormat); 
-            // Εδώ, αντί για TargetDataLine, χρησιμοποιείται SourceDataLine, που είναι τύπος γραμμής εξόδου (output line): ηχεία.
-            // Το info συνδέεται ξανά με το ίδιο audioFormat.
+            microphoneLine.start(); // Start recording audio from microphone.
+
+            // Speaker configuration:
+            info = new DataLine.Info(SourceDataLine.class, audioFormat);
+            // Now use SourceDataLine, which is an output line type: speakers.
+            // Info is again associated with the same audioFormat.
             speakerLine = (SourceDataLine) AudioSystem.getLine(info);
             speakerLine.open(audioFormat);
-            speakerLine.start(); // Ξεκινά την αναπαραγωγή ήχου από τα ηχεία.
+            speakerLine.start(); // Start audio playback.
         } catch (LineUnavailableException ex) {
             textArea.append("Error setting up audio line: " + ex.getMessage() + "\n");
         }
@@ -127,49 +127,49 @@ public class App extends Frame implements WindowListener, ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == sendButton) { // Αν πατηθεί το κουμπί 'Send', κάνε αυτό:
-            String message = inputTextField.getText(); // Λαμβάνει το κείμενο που θα στείλουμε από το πλαίσιο 'inputTextField'.
+        if (e.getSource() == sendButton) { // If 'Send' button is clicked:
+            String message = inputTextField.getText(); // Get the text from the inputTextField.
             if (message.isEmpty()) {
                 return;
             }
             try {
-                // Αποστολή μηνύματος μέσω UDP.
-                byte[] buffer = message.getBytes(); // Αντιγραφή του κειμένου στον buffer, σε μορφή byte.
-                // Για να στείλεις δεδομένα πρέπει να δημιουργήσεις ένα DatagramPacket.
-                // Το μήνυμα στέλνεται στην διεύθυνση remoteAddress και στο remotePort.
+                // Send message via UDP.
+                byte[] buffer = message.getBytes(); // Convert the message to byte array.
+                // Create DatagramPacket to send the message.
+                // Message is sent to remoteAddress at remotePort.
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length, remoteAddress, remotePort);
-                socket.send(packet); // Στέλνω το μήνυμα με τη μέθοδο send().
-                textArea.append("Local: " + message + "\n");  // Εμφάνιση κειμένου.
+                socket.send(packet); // Send the packet using send().
+                textArea.append("Local: " + message + "\n");  // Display sent message.
                 inputTextField.setText("");
             } catch (IOException ex) {
                 textArea.append("Error sending message: " + ex.getMessage() + "\n");
             }
-        } else if (e.getSource() == callButton) { // Αν πατηθεί το κουμπί 'Call', κάνε αυτό.
-            // Λειτουργία VoIP. Καλείται η κάτωθι μέθοδος.
+        } else if (e.getSource() == callButton) { // If 'Call' button is clicked:
+            // VoIP operation. Start voice communication.
             startVoiceCommunication();
         }
     }
 
     private void startVoiceCommunication() {
-        // Νήμα αποστολής ήχου.
+        // Thread for sending audio.
         Thread voiceSendThread = new Thread(() -> {
-            byte[] buffer = new byte[1024]; // Ο buffer που θα αποθηκεύσει τον ήχο.
+            byte[] buffer = new byte[1024]; // Buffer to store audio.
 
             try {
                 while (true) {
-                	// Διαβάζω τον ήχο από το μικρόφωνο.
+                    // Read audio from microphone.
                     int bytesRead = microphoneLine.read(buffer, 0, buffer.length);
-                    if (bytesRead > 0) { // Αν ο buffer έχει περιεχόμενο, κάνε αυτό:
-                    	// Δημιουργώ πακέτο για να στείλω τον ήχο.
+                    if (bytesRead > 0) { // If buffer has data:
+                        // Create packet to send audio.
                         DatagramPacket packet = new DatagramPacket(buffer, bytesRead, remoteAddress, remotePort);
-                        socket.send(packet); // Στέλνω το πακέτο.
+                        socket.send(packet); // Send packet.
                     }
                 }
             } catch (IOException ex) {
                 textArea.append("Error in audio transmission: " + ex.getMessage() + "\n");
             }
         });
-        voiceSendThread.start(); // Εκκίνηση του νήματος αποστολής ήχου.
+        voiceSendThread.start(); // Start audio send thread.
     }
 
     @Override
